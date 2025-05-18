@@ -1,0 +1,143 @@
+# ──────────────────────────────────────────────────────────────
+# Global
+# ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+
+# ──────────────────────────────────────────────────────────────
+# Python / FastAPI
+# ──────────────────────────────────────────────────────────────
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+eggs/
+*.egg-info/
+*.egg
+library.zip
+
+# Virtual environments
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Pipenv
+Pipfile.lock
+
+# Pytest cache
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# FastAPI logs / server reload
+*.reload
+
+# Local env files (but keep the example)
+.env
+!.env.example
+
+# ──────────────────────────────────────────────────────────────
+# Node / Next.js
+# ──────────────────────────────────────────────────────────────
+# Node modules
+node_modules/
+**/node_modules/
+
+# Next.js build output
+.next/
+out/
+dist/
+
+# Nuxt.js build output
+.nuxt/
+
+# Vercel
+.vercel/
+.vercel_build_output/
+
+# Yarn
+yarn-error.log
+.pnp.*
+.pnp.js
+
+# npm
+package-lock.json
+npm-debug.log*
+
+# pnpm
+pnpm-debug.log*
+node_modules/.pnpm/
+
+# Storybook
+out-storybook/
+storybook-static/
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Optional coverage directory
+coverage/
+
+# ──────────────────────────────────────────────────────────────
+# Docker
+# ──────────────────────────────────────────────────────────────
+*.pid
+*.seed
+*.pid.lock
+docker-compose.override.yml
+.env.local
+.env.*.local
+
+# ──────────────────────────────────────────────────────────────
+# Operating System
+# ──────────────────────────────────────────────────────────────
+# macOS
+.DS_Store
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ──────────────────────────────────────────────────────────────
+# Other
+# ──────────────────────────────────────────────────────────────
+# JetBrains IDEs
+.idea/
+*.iml
