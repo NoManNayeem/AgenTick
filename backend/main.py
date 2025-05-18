@@ -226,7 +226,8 @@ async def chat_ws(websocket: WebSocket):
             session.commit()
 
             # Generate and save agent response via per-conv agent
-            agent_inst = get_agent_for_conversation(conv.id)
+            agent_inst = get_agent_for_conversation(conv.id, session=session)
+
             try:
                 resp = agent_inst.run(message=text, stream=False, tools=None)
                 reply = getattr(resp, "content", str(resp))
