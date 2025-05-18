@@ -1,28 +1,21 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { FaRobot, FaUserCircle } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Typing indicator: three animated dots
 function TypingIndicator() {
   return (
-    <div className="flex items-center space-x-1 p-2">
-      <FaRobot className="text-2xl text-gray-500 mr-2" />
+    <div className="flex items-center space-x-2 p-2">
+      <FaRobot className="text-2xl text-gray-500" />
       <div className="flex space-x-1">
         {[0, 1, 2].map((idx) => (
           <motion.span
             key={idx}
             className="block w-2 h-2 rounded-full bg-gray-500"
-            animate={{
-              opacity: [0.2, 1, 0.2],
-              y: [0, -4, 0]
-            }}
-            transition={{
-              duration: 0.8,
-              repeat: Infinity,
-              delay: idx * 0.2
-            }}
+            animate={{ opacity: [0.3, 1, 0.3], y: [0, -4, 0] }}
+            transition={{ duration: 0.8, repeat: Infinity, delay: idx * 0.2 }}
           />
         ))}
       </div>
@@ -30,72 +23,72 @@ function TypingIndicator() {
   );
 }
 
-export default function ChatWindow({ messages }) {
+/**
+ * Props:
+ * - messages: Array of { id?, from: "user"|"agent"|"system", text: string, timestamp?: ISOString }
+ * - isThinking: boolean flag to show the bot typing indicator
+ */
+export default function ChatWindow({ messages = [], isThinking = false }) {
   const containerRef = useRef(null);
-  const [displayed, setDisplayed] = useState([]);
-  const [botThinking, setBotThinking] = useState(false);
 
-  // Queue messages and simulate agent "thinking"
-  useEffect(() => {
-    const pending = messages.slice(displayed.length);
-    if (!pending.length) return;
-
-    const nextMsg = pending[0];
-    if (nextMsg.from === "agent") {
-      setBotThinking(true);
-      const thinkDelay = 500 + Math.random() * 500;
-      const timer = setTimeout(() => {
-        setDisplayed((prev) => [...prev, nextMsg]);
-        setBotThinking(false);
-      }, thinkDelay);
-      return () => clearTimeout(timer);
-    } else {
-      setDisplayed((prev) => [...prev, nextMsg]);
-    }
-  }, [messages, displayed]);
-
-  // Auto-scroll on new message or typing indicator change
+  // Scroll to bottom whenever messages or typing indicator change
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTo({
         top: containerRef.current.scrollHeight,
-        behavior: "smooth"
+        behavior: "smooth",
       });
     }
-  }, [displayed, botThinking]);
+  }, [messages, isThinking]);
+
+  // Sort by timestamp (if provided)
+  const sorted = [...messages].sort((a, b) => {
+    if (a.timestamp && b.timestamp) {
+      return new Date(a.timestamp) - new Date(b.timestamp);
+    }
+    return 0;
+  });
 
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-auto p-4 space-y-4 bg-gray-100"
+      className="flex-1 overflow-auto p-4 space-y-4 bg-gray-100 overscroll-contain"
     >
       <AnimatePresence initial={false} exitBeforeEnter>
-        {displayed.map((msg, idx) => {
+        {sorted.map((msg, idx) => {
           const isAgent = msg.from === "agent";
+          const key = msg.id || msg.timestamp || `${msg.from}-${idx}`;
           return (
             <motion.div
-              key={`${msg.from}-${idx}-${msg.text}`}
+              key={key}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
-              className={`flex items-end ${isAgent ? "justify-start" : "justify-end"}`}
+              transition={{ duration: 0.2 }}
+              className={`flex items-end ${
+                isAgent ? "justify-start" : "justify-end"
+              }`}
             >
-              {isAgent && <FaRobot className="text-2xl text-gray-500 mr-2" />}
-              <motion.div
-                className={`max-w-[70%] p-3 rounded-lg transform transition-transform duration-300 ease-out hover:scale-[1.01] ${
-                  isAgent ? "bg-white text-gray-800 shadow" : "bg-blue-500 text-white shadow-lg"
+              {isAgent && (
+                <FaRobot className="text-2xl text-gray-500 mr-2 flex-shrink-0" />
+              )}
+              <div
+                className={`break-words max-w-full sm:max-w-[70%] p-3 rounded-2xl transform transition-transform duration-200 ease-out hover:scale-[1.02] ${
+                  isAgent
+                    ? "bg-white text-gray-800 shadow-md"
+                    : "bg-blue-500 text-white shadow-lg"
                 }`}
-                whileHover={{ scale: 1.02 }}
               >
                 {msg.text}
-              </motion.div>
-              {!isAgent && <FaUserCircle className="text-2xl text-blue-500 ml-2" />}
+              </div>
+              {!isAgent && (
+                <FaUserCircle className="text-2xl text-blue-500 ml-2 flex-shrink-0" />
+              )}
             </motion.div>
           );
         })}
 
-        {botThinking && (
+        {isThinking && (
           <motion.div
             key="typing-indicator"
             initial={{ opacity: 0 }}

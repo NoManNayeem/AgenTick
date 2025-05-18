@@ -5,6 +5,11 @@
 Thumbs.db
 *.log
 
+# ignore all SQLite databases
+*.db
+
+# ignore our tmp folder
+/backend/tmp/
 # ──────────────────────────────────────────────────────────────
 # Python / FastAPI
 # ──────────────────────────────────────────────────────────────
@@ -141,3 +146,5 @@ Desktop.ini
 # JetBrains IDEs
 .idea/
 *.iml
+
+
