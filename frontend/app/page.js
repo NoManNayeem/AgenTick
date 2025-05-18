@@ -63,7 +63,7 @@ export default function HomePage() {
         className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-gray-200 m-6"
       >
         <div className="md:hidden flex justify-center mb-4">
-          <img src="/app_logo.png" alt="AgenTick Logo" className="w-16 h-16 object-contain" />
+          <img src="/agentic_logo.png" alt="AgenTick Logo" className="w-16 h-16 object-contain" />
         </div>
 
         <h2 className="text-3xl font-bold text-center mb-6 text-indigo-600">

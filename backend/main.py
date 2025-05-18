@@ -1,5 +1,5 @@
 # main.py
-
+import traceback
 from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
@@ -188,50 +188,55 @@ def get_conversation_messages(
 # ─── WebSocket Chat ────────────────────────────────────────────────────────────
 @app.websocket("/ws/chat")
 async def chat_ws(websocket: WebSocket):
-    # Accept and parse query params
     await websocket.accept()
     params = websocket.query_params
+    print("🔍 WebSocket query params:", params)
+
     token = params.get("token") or ""
     conv_id = params.get("convId")
     username = decode_access_token(token)
+    print("🔐 Decoded username from token:", username)
+
     if not username or not conv_id:
+        print("❌ Invalid token or missing convId")
         await websocket.close(code=1008)
         return
 
     session = Session(engine)
-    user = session.exec(select(User).where(User.username == username)).first()
-    conv = session.get(Conversation, int(conv_id))
-    if not user or not conv or conv.user_id != user.id:
-        await websocket.close(code=1008)
-        session.close()
-        return
-
-    # Send back confirmation
-    await websocket.send_json({
-        "type": "init",
-        "convId": conv.id,
-        "title": conv.title,
-        "topic": conv.topic,
-    })
 
     try:
+        user = session.exec(select(User).where(User.username == username)).first()
+        conv = session.get(Conversation, int(conv_id))
+
+        if not user or not conv or conv.user_id != user.id:
+            print("❌ Unauthorized conversation access")
+            await websocket.close(code=1008)
+            return
+
+        await websocket.send_json({
+            "type": "init",
+            "convId": conv.id,
+            "title": conv.title,
+            "topic": conv.topic,
+        })
+
         while True:
             text = await websocket.receive_text()
+            print(f"📨 Received from user: {text}")
             now = datetime.now(timezone.utc)
 
-            # Save user message and bump conversation
             session.add(Message(conversation_id=conv.id, sender="user", content=text, timestamp=now))
             conv.updated_at = now
             session.add(conv)
             session.commit()
 
-            # Generate and save agent response via per-conv agent
-            agent_inst = get_agent_for_conversation(conv.id, session=session)
-
             try:
+                agent_inst = get_agent_for_conversation(conv.id, session=session)
                 resp = agent_inst.run(message=text, stream=False, tools=None)
                 reply = getattr(resp, "content", str(resp))
-            except:
+            except Exception as agent_err:
+                print("🤖 Agent error:", str(agent_err))
+                traceback.print_exc()
                 reply = "⚠️ Sorry, I couldn't generate a response. Please try again."
 
             now = datetime.now(timezone.utc)
@@ -240,15 +245,19 @@ async def chat_ws(websocket: WebSocket):
             session.add(conv)
             session.commit()
 
+            print(f"📤 Sending to client: {reply}")
             await websocket.send_text(reply)
 
     except WebSocketDisconnect:
-        session.close()
-    except Exception:
+        print("🔌 WebSocket disconnected")
+    except Exception as e:
+        print("❌ Unexpected server error:", str(e))
+        traceback.print_exc()
         try:
             await websocket.send_text("❌ Unexpected server error.")
         except:
             pass
         await websocket.close(code=1011)
+    finally:
         session.close()
 # ────────────────────────────────────────────────────────────────────────────────

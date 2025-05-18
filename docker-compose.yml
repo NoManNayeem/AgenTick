@@ -20,8 +20,7 @@ services:
     container_name: agentick-frontend
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
+    # Removed volume to preserve .next build directory
     environment:
       - NODE_ENV=production
     env_file:
