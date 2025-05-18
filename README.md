@@ -37,3 +37,28 @@ npm run dev
 docker-compose up --build
 ```
 This will start both the FastAPI backend and Next.js frontend in Docker containers.
+
+## Screenshots
+
+Below are interface screenshots to give you a visual sense of the app.
+
+<div align="center">
+  <table>
+    <tr>
+      <td><img src="./screenshots/screenshot_1.png" width="100%" /></td>
+      <td><img src="./screenshots/screenshot_2.png" width="100%" /></td>
+    </tr>
+    <tr>
+      <td><img src="./screenshots/screenshot_3.png" width="100%" /></td>
+      <td><img src="./screenshots/screenshot_4.png" width="100%" /></td>
+    </tr>
+    <tr>
+      <td><img src="./screenshots/screenshot_5.png" width="100%" /></td>
+      <td><img src="./screenshots/screenshot_6.png" width="100%" /></td>
+    </tr>
+    <tr>
+      <td><img src="./screenshots/screenshot_7.png" width="100%" /></td>
+      <td><img src="./screenshots/screenshot_8.png" width="100%" /></td>
+    </tr>
+  </table>
+</div>

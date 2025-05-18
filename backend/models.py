@@ -14,8 +14,11 @@ class User(SQLModel, table=True):
 
 class Conversation(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", nullable=False)
+    title: str = Field(default="Untitled Conversation", nullable=False)
+    topic: Optional[str] = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     user: Optional[User] = Relationship(back_populates="conversations")
     messages: List["Message"] = Relationship(back_populates="conversation")
@@ -23,7 +26,7 @@ class Conversation(SQLModel, table=True):
 
 class Message(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    conversation_id: int = Field(foreign_key="conversation.id")
+    conversation_id: int = Field(foreign_key="conversation.id", nullable=False)
     sender: str  # "user" or "agent"
     content: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

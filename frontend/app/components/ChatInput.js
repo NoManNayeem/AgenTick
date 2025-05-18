@@ -20,7 +20,6 @@ export default function ChatInput({ onSend }) {
     } catch (err) {
       console.error("Send failed", err);
     } finally {
-      // ensure spinner shows briefly
       setTimeout(() => setSending(false), 300);
     }
   };
