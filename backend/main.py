@@ -16,7 +16,8 @@ from pydantic import BaseModel, Field as PydanticField
 from database import engine, get_session
 from models import User, Conversation, Message
 from auth import hash_password, verify_password, create_access_token, decode_access_token
-from agent import get_agent_for_conversation
+# from agent import get_agent_for_conversation
+from Emailer_Agent import get_agent_for_conversation
 
 # Initialize DB
 SQLModel.metadata.create_all(engine)
