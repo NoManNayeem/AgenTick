@@ -9,57 +9,64 @@ from agno.tools.reasoning import ReasoningTools
 from typing import Dict, Optional
 from sqlmodel import Session
 
-# Shared database file for all conversations
+# Shared SQLite file
 DB_FILE = "tmp/agent.db"
 
-# Cache agents per conversation to reuse connections
+# Agent cache
 _AGENT_REGISTRY: Dict[int, Agent] = {}
 
 def get_agent_for_conversation(conv_id: int, session: Optional[Session] = None) -> Agent:
     """
-    Return (and cache) an Agent instance configured
-    with memory and storage scoped to the given conversation ID.
+    Returns an Agent instance with conversation-scoped memory and session storage.
     """
     if conv_id in _AGENT_REGISTRY:
         return _AGENT_REGISTRY[conv_id]
 
+    # Scoped table names for isolation
+    memory_table = f"agent_memories_conv_{conv_id}"
+    storage_table = f"agent_sessions_conv_{conv_id}"
+
     # Define system instructions
     system_prompt = """You are a helpful AI assistant.
 
-    When answering questions about movies, books, or similar topics, use your general knowledge instead of attempting to call specialized functions.
-    Always use your built-in knowledge to answer questions about specific content like movies, TV shows, books, etc."""
+Use your own knowledge to answer questions about books, movies, or other cultural topics.
+Avoid calling external tools unless explicitly required by the user."""
 
-    # Per-conversation memory table
+    # Memory setup
     memory_db = SqliteMemoryDb(
-        table_name="agent_memories",
-        db_file=DB_FILE
+        table_name=memory_table,
+        db_file=DB_FILE,
     )
     memory = Memory(
         model=OpenAIChat(id="gpt-4"),
-        db=memory_db
+        db=memory_db,
     )
 
-    # Per-conversation chat history storage
+    # Chat history setup
     storage = SqliteStorage(
-        table_name="agent_sessions",
-        db_file=DB_FILE
+        table_name=storage_table,
+        db_file=DB_FILE,
     )
 
+    # Build the agent
     agent = Agent(
         model=OpenAIChat(id="gpt-4"),
         tools=[ReasoningTools(add_instructions=True)],
-        system_prompt=system_prompt,
-        # Memory config
+        description=system_prompt,
+
+        # Memory configuration
         memory=memory,
         enable_agentic_memory=True,
         enable_user_memories=True,
-        # Storage config
+
+        # Chat history configuration
         storage=storage,
         add_history_to_messages=True,
         num_history_runs=3,
-        # Presentation
+
+        # Presentation settings
         markdown=True,
-        show_tool_calls=True
+        show_tool_calls=True,
     )
 
     _AGENT_REGISTRY[conv_id] = agent

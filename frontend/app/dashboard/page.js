@@ -51,6 +51,14 @@ export default function DashboardPage() {
   const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
+  // Add this helper function in your DashboardPage component
+  const truncateTitle = (title, maxLength) => {
+    if (title.length > maxLength) {
+      return title.substring(0, maxLength) + '...'; // Add ellipsis if truncated
+    }
+    return title;
+  };
+
   // — Auth & initial load —
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -613,7 +621,7 @@ export default function DashboardPage() {
                         />
                       ) : (
                         <div className="flex flex-col">
-                          <span className="font-medium truncate">{c.title}</span>
+                          <span className="font-medium truncate">{truncateTitle(c.title, 20)}</span>
                           <span className="text-xs text-gray-500">
                             {formatDate(c.created_at)}
                           </span>

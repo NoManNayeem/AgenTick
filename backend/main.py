@@ -1,22 +1,33 @@
 # main.py
+
 import traceback
-from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from datetime import datetime, timezone
+from typing import List, Optional
+
+from fastapi import (
+    FastAPI, Depends, HTTPException, status,
+    WebSocket, WebSocketDisconnect
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import SQLModel, select, Session, func
-from datetime import datetime, timezone
+from pydantic import BaseModel, Field as PydanticField
+
 from database import engine, get_session
 from models import User, Conversation, Message
 from auth import hash_password, verify_password, create_access_token, decode_access_token
-from pydantic import BaseModel
 from agent import get_agent_for_conversation
 
+# Initialize DB
 SQLModel.metadata.create_all(engine)
 
+# Initialize FastAPI app
 app = FastAPI(title="AgenTick Backend")
 
+# OAuth2 Scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -25,7 +36,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dependencies
+# ─────────────────────────────────────────────────────────────
+# ─── UTILS ────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     session: Session = Depends(get_session),
@@ -35,21 +49,22 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     return user
 
-# Auth endpoints
+# ─────────────────────────────────────────────────────────────
+# ─── AUTH ENDPOINTS ───────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+
 class RegisterRequest(BaseModel):
-    username: str
-    password: str
+    username: str = PydanticField(..., min_length=3, max_length=50)
+    password: str = PydanticField(..., min_length=6)
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -57,7 +72,8 @@ class TokenResponse(BaseModel):
 
 @app.post("/register", response_model=TokenResponse)
 def register(data: RegisterRequest, session: Session = Depends(get_session)):
-    if session.exec(select(User).where(User.username == data.username)).first():
+    existing_user = session.exec(select(User).where(User.username == data.username)).first()
+    if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered",
@@ -76,26 +92,28 @@ def login(data: RegisterRequest, session: Session = Depends(get_session)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     token = create_access_token(sub=user.username)
     return {"access_token": token}
 
-# Conversation management
+# ─────────────────────────────────────────────────────────────
+# ─── CONVERSATION CRUD ───────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+
 class ConversationCreate(BaseModel):
     title: str
-    topic: str | None = None
+    topic: Optional[str] = None
 
 class ConversationRead(BaseModel):
     id: int
     title: str
-    topic: str | None
+    topic: Optional[str]
     created_at: datetime
     updated_at: datetime
 
 class ConversationUpdate(BaseModel):
-    title: str | None = None
-    topic: str | None = None
+    title: Optional[str] = None
+    topic: Optional[str] = None
 
 @app.post("/conversations", response_model=ConversationRead)
 def create_conversation(
@@ -109,17 +127,16 @@ def create_conversation(
     session.refresh(conv)
     return conv
 
-@app.get("/conversations", response_model=list[ConversationRead])
+@app.get("/conversations", response_model=List[ConversationRead])
 def list_conversations(
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    convs = session.exec(
+    return session.exec(
         select(Conversation)
         .where(Conversation.user_id == current_user.id)
         .order_by(Conversation.updated_at.desc())
     ).all()
-    return convs
 
 @app.patch("/conversations/{conv_id}", response_model=ConversationRead)
 def update_conversation(
@@ -131,9 +148,9 @@ def update_conversation(
     conv = session.get(Conversation, conv_id)
     if not conv or conv.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
-    if data.title is not None:
+    if data.title:
         conv.title = data.title
-    if data.topic is not None:
+    if data.topic:
         conv.topic = data.topic
     conv.updated_at = datetime.now(timezone.utc)
     session.add(conv)
@@ -152,9 +169,11 @@ def delete_conversation(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
     session.delete(conv)
     session.commit()
-    return
 
-# Message history
+# ─────────────────────────────────────────────────────────────
+# ─── MESSAGES ────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+
 @app.get("/conversations/{conv_id}/messages")
 def get_conversation_messages(
     conv_id: int,
@@ -168,7 +187,6 @@ def get_conversation_messages(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found")
 
     total_count = session.exec(select(func.count(Message.id)).where(Message.conversation_id == conv_id)).first() or 0
-
     msgs = session.exec(
         select(Message)
         .where(Message.conversation_id == conv_id)
@@ -176,40 +194,42 @@ def get_conversation_messages(
         .offset(skip)
         .limit(limit)
     ).all()
+    return {
+        "conversation": {
+            "id": conv.id,
+            "title": conv.title,
+            "topic": conv.topic
+        },
+        "messages": [
+            {"from": m.sender, "text": m.content, "timestamp": m.timestamp.isoformat()}
+            for m in msgs
+        ],
+        "has_more": total_count > skip + len(msgs)
+    }
 
-    data = [
-        {"from": m.sender, "text": m.content, "timestamp": m.timestamp.isoformat()}
-        for m in msgs
-    ]
-    return {"conversation": {"id": conv.id, "title": conv.title, "topic": conv.topic}, "messages": data, "has_more": total_count > skip + len(data)}
+# ─────────────────────────────────────────────────────────────
+# ─── WEBSOCKET CHAT ──────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
 
-
-
-# ─── WebSocket Chat ────────────────────────────────────────────────────────────
 @app.websocket("/ws/chat")
 async def chat_ws(websocket: WebSocket):
     await websocket.accept()
     params = websocket.query_params
-    print("🔍 WebSocket query params:", params)
 
-    token = params.get("token") or ""
+    token = params.get("token", "")
     conv_id = params.get("convId")
-    username = decode_access_token(token)
-    print("🔐 Decoded username from token:", username)
 
+    username = decode_access_token(token)
     if not username or not conv_id:
-        print("❌ Invalid token or missing convId")
         await websocket.close(code=1008)
         return
 
     session = Session(engine)
-
     try:
         user = session.exec(select(User).where(User.username == username)).first()
         conv = session.get(Conversation, int(conv_id))
 
         if not user or not conv or conv.user_id != user.id:
-            print("❌ Unauthorized conversation access")
             await websocket.close(code=1008)
             return
 
@@ -221,23 +241,20 @@ async def chat_ws(websocket: WebSocket):
         })
 
         while True:
-            text = await websocket.receive_text()
-            print(f"📨 Received from user: {text}")
+            user_msg = await websocket.receive_text()
             now = datetime.now(timezone.utc)
 
-            session.add(Message(conversation_id=conv.id, sender="user", content=text, timestamp=now))
+            session.add(Message(conversation_id=conv.id, sender="user", content=user_msg, timestamp=now))
             conv.updated_at = now
             session.add(conv)
             session.commit()
 
             try:
-                agent_inst = get_agent_for_conversation(conv.id, session=session)
-                resp = agent_inst.run(message=text, stream=False, tools=None)
-                reply = getattr(resp, "content", str(resp))
-            except Exception as agent_err:
-                print("🤖 Agent error:", str(agent_err))
+                agent = get_agent_for_conversation(conv.id, session=session)
+                reply = getattr(agent.run(message=user_msg, stream=False), "content", "🤖 Sorry, no reply.")
+            except Exception as e:
                 traceback.print_exc()
-                reply = "⚠️ Sorry, I couldn't generate a response. Please try again."
+                reply = "⚠️ Sorry, I couldn't generate a response."
 
             now = datetime.now(timezone.utc)
             session.add(Message(conversation_id=conv.id, sender="agent", content=reply, timestamp=now))
@@ -245,19 +262,16 @@ async def chat_ws(websocket: WebSocket):
             session.add(conv)
             session.commit()
 
-            print(f"📤 Sending to client: {reply}")
             await websocket.send_text(reply)
 
     except WebSocketDisconnect:
-        print("🔌 WebSocket disconnected")
+        print("WebSocket disconnected")
     except Exception as e:
-        print("❌ Unexpected server error:", str(e))
         traceback.print_exc()
         try:
-            await websocket.send_text("❌ Unexpected server error.")
+            await websocket.send_text("❌ Server error occurred.")
         except:
             pass
         await websocket.close(code=1011)
     finally:
         session.close()
-# ────────────────────────────────────────────────────────────────────────────────
