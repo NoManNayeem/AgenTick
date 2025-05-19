@@ -148,3 +148,52 @@ Desktop.ini
 *.iml
 
 
+
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore virtual environment folders
+env/
+venv/
+.venv/
+
+# Ignore Jupyter runtime files
+*.jpynb_meta
+*.ipynb_checkpoints
+~$*
+
+# Ignore output files and logs (optional)
+*.log
+*.out
+*.tmp
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore data files (customize as needed)
+*.csv
+*.tsv
+*.h5
+*.hdf5
+*.sqlite
+*.db
+*.parquet
+*.feather
+*.pkl
+*.joblib
+*.npy
+*.npz
+
+# Ignore environment config (optional)
+.env
+*.env
+
+# VSCode settings (if using VSCode)
+.vscode/
